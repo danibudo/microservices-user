@@ -1,19 +1,22 @@
 package com.dani.userservice.controller
 
+import com.dani.userservice.dto.ErrorResponse
 import com.dani.userservice.exception.EmailAlreadyExistsException
 import com.dani.userservice.exception.ForbiddenOperationException
 import com.dani.userservice.exception.InvalidOperationException
 import com.dani.userservice.exception.UserNotFoundException
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
-import java.time.OffsetDateTime
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
+    private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
 
     @ExceptionHandler(UserNotFoundException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -55,19 +58,8 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception::class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    fun handleGeneric(ex: Exception): ErrorResponse =
-        ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred")
-}
-
-data class ErrorResponse(
-    val status: Int,
-    val error: String,
-    val message: String,
-    val timestamp: OffsetDateTime = OffsetDateTime.now()
-) {
-    constructor(httpStatus: HttpStatus, message: String) : this(
-        status = httpStatus.value(),
-        error = httpStatus.reasonPhrase,
-        message = message
-    )
+    fun handleGeneric(ex: Exception): ErrorResponse {
+        log.error("Unhandled exception", ex)
+        return ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred")
+    }
 }
