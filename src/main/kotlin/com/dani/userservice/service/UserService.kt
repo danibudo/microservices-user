@@ -78,8 +78,12 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     private fun checkCanManage(requesterRole: Role, targetRole: Role) {
-        if (requesterRole == Role.ACCESS_ADMIN && targetRole == Role.SUPER_ADMIN) {
-            throw ForbiddenOperationException("access-admin cannot manage super-admin accounts")
+        when (requesterRole) {
+            Role.SUPER_ADMIN -> return
+            Role.ACCESS_ADMIN -> if (targetRole == Role.SUPER_ADMIN) {
+                throw ForbiddenOperationException("access-admin cannot manage super-admin accounts")
+            }
+            else -> throw ForbiddenOperationException("Insufficient permissions to manage users")
         }
     }
 
