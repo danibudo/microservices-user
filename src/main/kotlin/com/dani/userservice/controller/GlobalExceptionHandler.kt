@@ -25,18 +25,24 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(EmailAlreadyExistsException::class)
     @ResponseStatus(HttpStatus.CONFLICT)
-    fun handleConflict(ex: EmailAlreadyExistsException): ErrorResponse =
-        ErrorResponse(HttpStatus.CONFLICT, ex.message ?: "Conflict")
+    fun handleConflict(ex: EmailAlreadyExistsException): ErrorResponse {
+        log.warn("Email conflict: {}", ex.message)
+        return ErrorResponse(HttpStatus.CONFLICT, ex.message ?: "Conflict")
+    }
 
     @ExceptionHandler(ForbiddenOperationException::class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    fun handleForbidden(ex: ForbiddenOperationException): ErrorResponse =
-        ErrorResponse(HttpStatus.FORBIDDEN, ex.message ?: "Forbidden")
+    fun handleForbidden(ex: ForbiddenOperationException): ErrorResponse {
+        log.warn("Forbidden operation: {}", ex.message)
+        return ErrorResponse(HttpStatus.FORBIDDEN, ex.message ?: "Forbidden")
+    }
 
     @ExceptionHandler(InvalidOperationException::class)
     @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
-    fun handleInvalidOperation(ex: InvalidOperationException): ErrorResponse =
-        ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.message ?: "Unprocessable entity")
+    fun handleInvalidOperation(ex: InvalidOperationException): ErrorResponse {
+        log.warn("Invalid operation: {}", ex.message)
+        return ErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY, ex.message ?: "Unprocessable entity")
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -48,8 +54,10 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    fun handleIllegalArgument(ex: IllegalArgumentException): ErrorResponse =
-        ErrorResponse(HttpStatus.BAD_REQUEST, ex.message ?: "Bad request")
+    fun handleIllegalArgument(ex: IllegalArgumentException): ErrorResponse {
+        log.warn("Bad request: {}", ex.message)
+        return ErrorResponse(HttpStatus.BAD_REQUEST, ex.message ?: "Bad request")
+    }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

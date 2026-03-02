@@ -8,6 +8,7 @@ import com.dani.userservice.exception.ForbiddenOperationException
 import com.dani.userservice.exception.InvalidOperationException
 import com.dani.userservice.exception.UserNotFoundException
 import com.dani.userservice.repository.UserRepository
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
@@ -16,19 +17,27 @@ import java.util.UUID
 @Transactional
 class UserService(private val userRepository: UserRepository) {
 
+    private val log = LoggerFactory.getLogger(UserService::class.java)
+
     @Transactional(readOnly = true)
-    fun listUsers(role: Role?, status: UserStatus?): List<User> = when {
-        role != null && status != null -> userRepository.findByRoleAndStatus(role, status)
-        role != null -> userRepository.findByRole(role)
-        status != null -> userRepository.findByStatus(status)
-        else -> userRepository.findAll()
+    fun listUsers(role: Role?, status: UserStatus?): List<User> {
+        log.debug("Listing users role={} status={}", role?.value, status?.value)
+        return when {
+            role != null && status != null -> userRepository.findByRoleAndStatus(role, status)
+            role != null -> userRepository.findByRole(role)
+            status != null -> userRepository.findByStatus(status)
+            else -> userRepository.findAll()
+        }
     }
 
     @Transactional(readOnly = true)
-    fun getUser(id: UUID): User =
-        userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
+    fun getUser(id: UUID): User {
+        log.debug("Fetching user id={}", id)
+        return userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
+    }
 
     fun createUser(email: String, firstName: String, lastName: String, role: Role, requesterRole: Role): User {
+        log.info("Creating user email={} role={}", email, role.value)
         checkCanManage(requesterRole, role)
         if (userRepository.existsByEmail(email)) throw EmailAlreadyExistsException(email)
 
@@ -38,6 +47,7 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     fun updateUser(id: UUID, firstName: String?, lastName: String?, newRole: Role?, requesterId: UUID, requesterRole: Role): User {
+        log.info("Updating user id={}", id)
         val user = userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
 
         if (newRole != null) checkNotSelf(requesterId, id, "change the role of")
@@ -53,6 +63,7 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     fun deleteUser(id: UUID, requesterId: UUID, requesterRole: Role) {
+        log.info("Deleting user id={}", id)
         val user = userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
 
         checkNotSelf(requesterId, id, "delete")
@@ -63,6 +74,7 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     fun resendInvite(id: UUID) {
+        log.info("Resending invite for user id={}", id)
         val user = userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
 
         if (user.status != UserStatus.PENDING) {
@@ -72,9 +84,11 @@ class UserService(private val userRepository: UserRepository) {
     }
 
     fun updateStatus(userId: UUID, newStatus: UserStatus) {
+        log.info("Updating status for user id={} to status={}", userId, newStatus.value)
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException(userId) }
         user.status = newStatus
         userRepository.save(user)
+        log.info("User status updated id={} status={}", userId, newStatus.value)
     }
 
     private fun checkCanManage(requesterRole: Role, targetRole: Role) {
