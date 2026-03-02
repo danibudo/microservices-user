@@ -18,13 +18,11 @@ class UserController(private val userService: UserService) {
 
     @GetMapping
     fun listUsers(
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String,
+        caller: CallerContext,
         @RequestParam(required = false) role: String?,
         @RequestParam(required = false) status: String?
     ): List<UserResponse> {
-        val callerRole = Role.fromValue(requesterRole)
-        requireRole(callerRole, Role.LIBRARIAN, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        requireRole(caller.role, Role.LIBRARIAN, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
 
         return userService.listUsers(
             role = role?.let { Role.fromValue(it) },
@@ -35,12 +33,9 @@ class UserController(private val userService: UserService) {
     @GetMapping("/{id}")
     fun getUser(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String
+        caller: CallerContext
     ): UserResponse {
-        val callerId = UUID.fromString(requesterId)
-        val callerRole = Role.fromValue(requesterRole)
-        requireRoleOrSelf(callerId, id, callerRole, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        requireRoleOrSelf(caller, id, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
 
         return UserResponse.from(userService.getUser(id))
     }
@@ -49,11 +44,9 @@ class UserController(private val userService: UserService) {
     @ResponseStatus(HttpStatus.CREATED)
     fun createUser(
         @RequestBody @Valid request: CreateUserRequest,
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String
+        caller: CallerContext
     ): UserResponse {
-        val callerRole = Role.fromValue(requesterRole)
-        requireRole(callerRole, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        requireRole(caller.role, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
 
         return UserResponse.from(
             userService.createUser(
@@ -61,7 +54,7 @@ class UserController(private val userService: UserService) {
                 firstName = request.firstName,
                 lastName = request.lastName,
                 role = request.role,
-                requesterRole = callerRole
+                requesterRole = caller.role
             )
         )
     }
@@ -70,12 +63,9 @@ class UserController(private val userService: UserService) {
     fun updateUser(
         @PathVariable id: UUID,
         @RequestBody @Valid request: UpdateUserRequest,
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String
+        caller: CallerContext
     ): UserResponse {
-        val callerId = UUID.fromString(requesterId)
-        val callerRole = Role.fromValue(requesterRole)
-        requireRole(callerRole, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        requireRole(caller.role, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
 
         return UserResponse.from(
             userService.updateUser(
@@ -83,8 +73,8 @@ class UserController(private val userService: UserService) {
                 firstName = request.firstName,
                 lastName = request.lastName,
                 newRole = request.role,
-                requesterId = callerId,
-                requesterRole = callerRole
+                requesterId = caller.id,
+                requesterRole = caller.role
             )
         )
     }
@@ -93,26 +83,19 @@ class UserController(private val userService: UserService) {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteUser(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String
+        caller: CallerContext
     ) {
-        val callerId = UUID.fromString(requesterId)
-        val callerRole = Role.fromValue(requesterRole)
-        requireRole(callerRole, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
-
-        userService.deleteUser(id, callerId, callerRole)
+        requireRole(caller.role, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        userService.deleteUser(id, caller.id, caller.role)
     }
 
     @PostMapping("/{id}/resend-invite")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun resendInvite(
         @PathVariable id: UUID,
-        @RequestHeader("X-User-Id") requesterId: String,
-        @RequestHeader("X-User-Role") requesterRole: String
+        caller: CallerContext
     ) {
-        val callerRole = Role.fromValue(requesterRole)
-        requireRole(callerRole, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
-
+        requireRole(caller.role, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
         userService.resendInvite(id)
     }
 
@@ -120,7 +103,7 @@ class UserController(private val userService: UserService) {
         if (callerRole !in allowed) throw ForbiddenOperationException("Insufficient permissions")
     }
 
-    private fun requireRoleOrSelf(callerId: UUID, targetId: UUID, callerRole: Role, vararg allowed: Role) {
-        if (callerId != targetId && callerRole !in allowed) throw ForbiddenOperationException("Insufficient permissions")
+    private fun requireRoleOrSelf(caller: CallerContext, targetId: UUID, vararg allowed: Role) {
+        if (caller.id != targetId && caller.role !in allowed) throw ForbiddenOperationException("Insufficient permissions")
     }
 }
