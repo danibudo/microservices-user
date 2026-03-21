@@ -7,6 +7,7 @@ import com.dani.userservice.exception.EmailAlreadyExistsException
 import com.dani.userservice.exception.ForbiddenOperationException
 import com.dani.userservice.exception.InvalidOperationException
 import com.dani.userservice.exception.UserNotFoundException
+import com.dani.userservice.messaging.UserEventPublisher
 import com.dani.userservice.repository.UserRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -15,7 +16,10 @@ import java.util.UUID
 
 @Service
 @Transactional
-class UserService(private val userRepository: UserRepository) {
+class UserService(
+    private val userRepository: UserRepository,
+    private val eventPublisher: UserEventPublisher
+) {
 
     private val log = LoggerFactory.getLogger(UserService::class.java)
 
@@ -42,8 +46,9 @@ class UserService(private val userRepository: UserRepository) {
         if (userRepository.existsByEmail(email)) throw EmailAlreadyExistsException(email)
 
         val user = User(email = email, firstName = firstName, lastName = lastName, role = role)
-        return userRepository.save(user)
-        // TODO publish user.created event
+        val saved = userRepository.save(user)
+        eventPublisher.publishUserCreated(saved)
+        return saved
     }
 
     fun updateUser(id: UUID, firstName: String?, lastName: String?, newRole: Role?, requesterId: UUID, requesterRole: Role): User {
@@ -58,8 +63,9 @@ class UserService(private val userRepository: UserRepository) {
         lastName?.let { user.lastName = it }
         newRole?.let { user.role = it }
 
-        return userRepository.save(user)
-        // TODO publish user.role_updated event if role changed
+        val saved = userRepository.save(user)
+        if (newRole != null) eventPublisher.publishUserRoleUpdated(saved)
+        return saved
     }
 
     fun deleteUser(id: UUID, requesterId: UUID, requesterRole: Role) {
@@ -70,7 +76,7 @@ class UserService(private val userRepository: UserRepository) {
         checkCanManage(requesterRole, user.role)
 
         userRepository.delete(user)
-        // TODO publish user.deleted event
+        eventPublisher.publishUserDeleted(user.id)
     }
 
     fun resendInvite(id: UUID) {
@@ -80,7 +86,7 @@ class UserService(private val userRepository: UserRepository) {
         if (user.status != UserStatus.PENDING) {
             throw InvalidOperationException("Invite can only be resent for pending users")
         }
-        // TODO publish user.invite_resent event
+        eventPublisher.publishUserInviteResent(user)
     }
 
     fun updateStatus(userId: UUID, newStatus: UserStatus) {
