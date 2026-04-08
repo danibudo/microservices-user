@@ -89,6 +89,16 @@ class UserController(private val userService: UserService) {
         userService.deleteUser(id, caller.id, caller.role)
     }
 
+    @PostMapping("/{id}/deactivate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deactivateUser(
+        @PathVariable id: UUID,
+        caller: CallerContext
+    ) {
+        requireRole(caller.role, Role.ACCESS_ADMIN, Role.SUPER_ADMIN)
+        userService.deactivateUser(id, caller.id, caller.role)
+    }
+
     @PostMapping("/{id}/resend-invite")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun resendInvite(

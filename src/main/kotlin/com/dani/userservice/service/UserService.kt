@@ -79,6 +79,21 @@ class UserService(
         eventPublisher.publishUserDeleted(user.id)
     }
 
+    fun deactivateUser(id: UUID, requesterId: UUID, requesterRole: Role) {
+        log.info("Deactivating user id={}", id)
+        val user = userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
+
+        checkNotSelf(requesterId, id, "deactivate")
+        checkCanManage(requesterRole, user.role)
+
+        if (user.status == UserStatus.DEACTIVATED) {
+            throw InvalidOperationException("User is already deactivated")
+        }
+
+        user.status = UserStatus.DEACTIVATED
+        userRepository.save(user)
+    }
+
     fun resendInvite(id: UUID) {
         log.info("Resending invite for user id={}", id)
         val user = userRepository.findById(id).orElseThrow { UserNotFoundException(id) }
