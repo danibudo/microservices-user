@@ -89,6 +89,11 @@ class UserService(
         eventPublisher.publishUserInviteResent(user)
     }
 
+    fun confirmInviteSent(userId: UUID) {
+        log.info("Invite confirmed by auth-service for user id={}", userId)
+        if (!userRepository.existsById(userId)) throw UserNotFoundException(userId)
+    }
+
     fun updateStatus(userId: UUID, newStatus: UserStatus) {
         log.info("Updating status for user id={} to status={}", userId, newStatus.value)
         val user = userRepository.findById(userId).orElseThrow { UserNotFoundException(userId) }

@@ -29,3 +29,6 @@ data class UserCreatedPayload(val userId: UUID, val email: String, val role: Str
 data class UserInviteResentPayload(val userId: UUID, val email: String)
 data class UserRoleUpdatedPayload(val userId: UUID, val role: String)
 data class UserDeletedPayload(val userId: UUID)
+
+// Inbound
+data class AuthInviteTokenGeneratedPayload(val userId: UUID, val email: String, val inviteToken: String, val expiresAt: String)
